@@ -60,8 +60,6 @@ public class DemoApplication {
 		byte[] decrypted = SecurityUtils.decrypt(secretKey, encrypted, iv);
 		System.out.println("[Server] encrypted the csv file");
 
-
-
 		System.out.println("[Server] downloading the csv file");
 		FileUtil.byteArrayToFile(decrypted, outputCsvPath);
 		System.out.println("[Server] downloaded the csv file");
