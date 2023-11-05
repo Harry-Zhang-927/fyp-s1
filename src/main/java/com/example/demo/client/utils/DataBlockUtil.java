@@ -5,8 +5,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.security.GeneralSecurityException;
+import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -23,43 +23,116 @@ public class DataBlockUtil {
 //        return blocks;
 //    }
 
-    public static void splitAndCompressCsv(String inputCsvPath, int rowsPerFile, String outputDirPath) throws IOException {
-        Path outputPath = Paths.get(outputDirPath);
-        if (!Files.exists(outputPath)) {
-            Files.createDirectories(outputPath);
-        }
+    public static String findAndRemoveBlockWithSignature(String csvPath, int rowsPerBlock, String signatureToFind) throws IOException {
+        Path path = Paths.get(csvPath);
+        try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+            String line;
+            int lineCount = 0;
+            List<String> currentBlock = new ArrayList<>();
 
-        try (BufferedReader reader = Files.newBufferedReader(Paths.get(inputCsvPath), StandardCharsets.UTF_8)) {
+            // 跳过表头
+            reader.readLine();
+
+            while ((line = reader.readLine()) != null) {
+                currentBlock.add(line);
+                lineCount++;
+
+                // 检查是否达到了数据块的结束，或者是否是文件的最后一行
+                if (lineCount % (rowsPerBlock + 1) == 0 || !reader.ready()) {
+                    // 搜索当前数据块中的MD5值
+                    Optional<String> foundLine = currentBlock.stream()
+                            .filter(l -> l.contains(signatureToFind))
+                            .findFirst();
+
+                    if (foundLine.isPresent()) {
+                        // 从数据块中移除包含MD5的行
+                        currentBlock.remove(foundLine.get());
+                        String remainingBlock = String.join("\n", currentBlock);
+                        return MD5Util.calculateMD5(remainingBlock);
+
+                        // 如果需要，可以在此处处理剩余的数据块，例如将其写回到文件中
+                        // ...
+
+                        // 如果只需要找到第一个匹配的数据块，则在此处终止循环
+                    } else {
+                        // 没有发现MD5，重置当前数据块以读取下一个数据块
+                        currentBlock.clear();
+                        lineCount = 0;
+                    }
+                }
+            }
+            System.out.println("MD5 " + signatureToFind + " not found in any block.");
+            return  "hehe";
+        }
+    }
+
+    public static void splitCsvToMetadata(String inputCsvPath, int rowsPerBlock, String metadataPath, String outputCsvPath) throws IOException {
+        Path inputPath = Paths.get(inputCsvPath);
+        String inputFileName = inputPath.getFileName().toString();
+        Path outputPath = Paths.get(outputCsvPath).resolve(inputFileName + "_tagged" + ".csv");
+
+        // 确保输出文件的目录存在，如果不存在则创建
+        Files.createDirectories(outputPath.getParent());
+
+        try (BufferedReader reader = Files.newBufferedReader(inputPath, StandardCharsets.UTF_8);
+             BufferedWriter metadataWriter = Files.newBufferedWriter(Paths.get(metadataPath), StandardCharsets.UTF_8);
+             BufferedWriter outputWriter = Files.newBufferedWriter(outputPath, StandardCharsets.UTF_8)) {
             String line = reader.readLine(); // 读取表头
-            String[] headers = line != null ? line.split(",") : new String[0];
-            int fileCount = 0;
-            int rowCount = 0;
+
+            // 写入表头到最终的CSV文件
+            if (line != null) {
+                outputWriter.write(line);
+                outputWriter.newLine();
+            }
 
             while (line != null) {
-                String outputFile = outputDirPath + File.separator + "output_" + fileCount + ".csv";
-                try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(outputFile))) {
-                    writer.write(String.join(",", headers));
-                    writer.newLine();
-
-                    while (rowCount < rowsPerFile && line != null) {
-                        writer.write(line);
-                        writer.newLine();
-                        line = reader.readLine();
-                        rowCount++;
+                List<String> blockLines = new ArrayList<>();
+                // 读取数据块
+                for (int rowCount = 0; rowCount < rowsPerBlock && line != null; rowCount++) {
+                    line = reader.readLine();
+                    if (line != null) {
+                        blockLines.add(line);
                     }
                 }
 
-                //compressFile(outputFile);
-                String md5 = MD5Util.calculateMD5(outputFile);
-                MD5Util.saveMd5AndUuid(md5);
-                rowCount = 0;
-                fileCount++;
+                // 计算整个数据块的MD5
+                String blockAsString = String.join("\n", blockLines);
+                String blockMd5 = MD5Util.calculateMD5(blockAsString);
+
+
+
+                byte[] signature = SecurityUtils.sign(SecurityUtils.getKeyPair(SecurityUtils.CLIENT_PUBLIC_KEY_FILE,
+                        SecurityUtils.CLIENT_PRIVATE_KEY_FILE).getPrivate(), blockMd5.getBytes());
+
+
+                //tag
+                Random rand = new Random();
+                int n = rand.nextInt(blockLines.size()) + 1; // +1 是为了避开表头
+
+                // 在第n行插入MD5值
+                blockLines.add(n, "MD5:" + Arrays.toString(signature));
+
+                // 创建元数据条目
+                metadataWriter.write("MD5: " + Arrays.toString(signature));
+                metadataWriter.newLine();
+
+                // 将数据块写入最终的CSV文件
+                for (String blockLine : blockLines) {
+                    outputWriter.write(blockLine);
+                    outputWriter.newLine();
+                }
+
             }
-            PropertiesUtil.readProperties("/Users/zhanghaoran/Desktop/FYP/data/data5/1/testing/uuid_md5/uuid_md5.properties");
-            System.out.println("_______________________________________________________________________________________________");
-            System.out.println("Split and Compression is done");
+        } catch (GeneralSecurityException e) {
+            throw new RuntimeException(e);
         }
+        System.out.println("Metadata generation and data block writing are done to " + outputPath);
     }
+
+    // 在调用方法时传入tag:
+
+
+
 
     public static void compressFile(String filePath) throws IOException {
         String zipFile = filePath + ".zip";
