@@ -7,6 +7,7 @@ import com.example.demo.client.utils.SecurityUtils;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import javax.crypto.SecretKey;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.*;
 import java.security.spec.AlgorithmParameterSpec;
@@ -15,9 +16,9 @@ import java.util.Objects;
 
 @SpringBootApplication
 public class UploadingDemo {
-	public static final String inputCsvPath = "/Users/zhanghaoran/Desktop/FYP/data/data5/1/trf1.csv";
+	public static final String inputCsvPath = "/Users/zhanghaoran/Desktop/FYP/data/data5/1/trf1in.csv";
 	//public static final String outputCsvPath = "/Users/zhanghaoran/Desktop/FYP/data/data5/1/serverDB/trf1.csv";
-	public static final String outputCsvPath = "/Users/zhanghaoran/Desktop/FYP/data/data5/1/serverDB/trf1.csv_tagged.csv";
+	public static final String outputCsvPath = "/Users/zhanghaoran/Desktop/FYP/data/data5/1/trf1.csv_tagged.csv";
 	public static void main(String[] args) throws GeneralSecurityException, IOException, InterruptedException {
 		KeyPair clientKeyPair = SecurityUtils.getKeyPair(SecurityUtils.CLIENT_PUBLIC_KEY_FILE, SecurityUtils.CLIENT_PRIVATE_KEY_FILE);
 		PublicKey clientPublicKey = clientKeyPair.getPublic();
@@ -67,13 +68,26 @@ public class UploadingDemo {
 		byte[] encrypted = SecurityUtils.encrypt(secretKey, bytesFile, iv);
 		System.out.println("[Client] encrypted the csv file");
 
+
+
 		System.out.println("[Server] decrypting the csv file");
 		byte[] decrypted = SecurityUtils.decrypt(secretKey, encrypted, iv);
 		System.out.println("[Server] encrypted the csv file");
 
+		String filePath = "/Users/zhanghaoran/Desktop/FYP/data/data5/1/trf1.bin";
+
+
 		System.out.println("[Server] downloading the csv file");
 		FileUtil.byteArrayToFile(decrypted, outputCsvPath);
 		System.out.println("[Server] downloaded the csv file");
+
+		try (FileOutputStream fos = new FileOutputStream(filePath)) {
+			fos.write(decrypted);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+
 
 
 		System.out.println("[Third Party] checking if the file is consistent");
