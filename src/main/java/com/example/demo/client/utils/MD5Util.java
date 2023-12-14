@@ -45,33 +45,4 @@ public class MD5Util {
             throw new RuntimeException(e);
         }
     }
-
-    public static void saveMd5AndUuid(String md5) {
-        String uuid = UUID.randomUUID().toString();
-
-        // 加载或创建properties对象
-        Properties prop = new Properties();
-        File propertiesFile = new File(PropertiesFilePath);
-
-        // 如果文件已经存在，加载它
-        if (propertiesFile.exists()) {
-            try (FileInputStream in = new FileInputStream(propertiesFile)) {
-                prop.load(in);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        // 添加MD5和UUID到properties对象
-        prop.setProperty(uuid, md5);
-
-        // 保存properties对象到文件
-        try (FileOutputStream out = new FileOutputStream(propertiesFile)) {
-            prop.store(out, "UUID and MD5 pairs");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-
 }

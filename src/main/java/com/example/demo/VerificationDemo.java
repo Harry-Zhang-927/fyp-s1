@@ -1,6 +1,7 @@
 package com.example.demo;
 
 import com.example.demo.client.utils.DataBlockUtil;
+import com.example.demo.client.utils.MD5Util;
 import com.example.demo.client.utils.SecurityUtils;
 
 import javax.crypto.SecretKey;
@@ -15,8 +16,8 @@ import java.util.Arrays;
 import java.util.Objects;
 
 public class VerificationDemo {
-    public static final String csvPath = "/Users/zhanghaoran/Desktop/FYP/data/data5/1/serverDB/trf1.csv_tagged.csv";
-    public static final String signatureToFind = "[-127, 93, 24, -73, 32, -127, -53, 72, 31, -39, 55, 8, -100, 11, -38, 111, 5, 65, -111, -5, 117, 8, -32, 120, 1, 98, 111, 66, 91, -37, 36, -17, -3, 17, 19, -42, 16, -5, -47, 118, 105, 104, -43, -18, 65, -97, -22, 18, 22, 35, -114, 105, -4, 45, -37, -41, -19, 40, 0, 90, 95, 58, -97, 94, -81, 1, -81, -85, 12, -39, -92, -110, 96, -46, 14, 96, -80, 16, 73, -64, -24, 96, 99, 65, 122, -80, -44, -98, -28, -100, 37, 44, 60, 107, 38, -33, 81, -10, -14, 36, 17, -58, 123, 83, 7, 43, 70, -69, -17, 96, 18, -52, -24, -111, -6, 109, -36, 73, -58, -47, 96, -25, 94, 118, 62, -33, 55, 3]";
+    public static final String csvPath = "/Users/zhanghaoran/Desktop/FYP/data/data5/1/serverDB/trf1_10mil_shuffled.csv_tagged.csv";
+    public static final String signatureToFind = "[87, 60, 16, 30, 0, -18, -68, 80, 3, 89, -16, 24, -100, -105, -27, 74, 56, 86, -112, 55, 29, -16, -52, 126, 119, -25, -64, -32, 113, -112, -43, -22, 101, -41, 101, -37, 42, 41, -41, -116, -65, -41, 63, 105, -55, -29, -16, 70, -7, -19, -92, 23, 15, -16, -104, -22, -87, -1, -83, -36, 104, -82, -12, 112, 69, -14, 110, 75, -9, -48, -19, 35, 27, 33, -107, -44, -108, 118, -16, 93, -89, -37, -15, 21, -114, 90, 53, 34, 98, 76, -121, -117, 28, 4, 40, 74, 98, 88, 37, -56, -25, -104, 84, -58, 82, -3, 104, -48, -115, 25, 79, 53, 43, 124, -78, 83, 46, -118, 104, -63, 78, 50, 67, 99, -85, 28, 114, -60]";
     public static void main(String[] arg) throws IOException, GeneralSecurityException, InterruptedException {
 
         KeyPair clientKeyPair = SecurityUtils.getKeyPair(SecurityUtils.CLIENT_PUBLIC_KEY_FILE, SecurityUtils.CLIENT_PRIVATE_KEY_FILE);
@@ -79,7 +80,7 @@ public class VerificationDemo {
 
         System.out.println("Sending the corresponding data block to client");
         System.out.println("Encrypting and decrypting will be skipped");
-        String blockMetaData = DataBlockUtil.findAndRemoveBlockWithSignature(csvPath, 1000, decryptedChallengeMsg);
+        String blockMetaData = DataBlockUtil.findAndRemoveBlockWithSignatureParallel(csvPath, 500000, decryptedChallengeMsg);
 
         String signatureOfReturnedMetadata = Arrays.toString(SecurityUtils.sign(SecurityUtils.getKeyPair(SecurityUtils.CLIENT_PUBLIC_KEY_FILE,
                 SecurityUtils.CLIENT_PRIVATE_KEY_FILE).getPrivate(), blockMetaData.getBytes()));

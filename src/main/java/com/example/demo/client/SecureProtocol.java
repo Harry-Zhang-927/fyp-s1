@@ -18,32 +18,23 @@ public class SecureProtocol {
         this.clientPrivateKey = clientPrivKey;
     }
 
-    // 客户端发起挑战
     public byte[] clientInitiatesChallenge() throws GeneralSecurityException {
-        // 选择一个随机数 rc
         SecureRandom random = new SecureRandom();
         byte[] rc = new byte[16];
         random.nextBytes(rc);
 
-        // 加密 rc
         byte[] encryptedRc = SecurityUtils.encrypt(serverPublicKey, rc);
 
-        // 对 rc 进行签名
         byte[] signature = SecurityUtils.sign(clientPrivateKey, rc);
 
-        // 存储挑战以备将来验证响应
         challengeMap.put(Base64.getEncoder().encodeToString(rc), rc);
 
-        // 返回包含加密的 rc 和签名的数据包
         return concatenateArrays(encryptedRc, signature);
     }
 
-    // 客户端验证服务器响应
     public boolean clientVerifiesResponse(byte[] response, byte[] signature) throws GeneralSecurityException {
-        // 解密响应
         byte[] decryptedResponse = SecurityUtils.decrypt(clientPrivateKey, response);
 
-        // 验证签名
         return SecurityUtils.verify(serverPublicKey, decryptedResponse, signature) && challengeMap.containsKey(Base64.getEncoder().encodeToString(decryptedResponse));
     }
 

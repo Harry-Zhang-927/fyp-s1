@@ -27,12 +27,12 @@ public class SecurityUtils {
     public static final String SERVER_PRIVATE_KEY_FILE = "/Users/zhanghaoran/Desktop/FYP/data/data5/1/keys/serverPrivateKey.txt";
 
     public static void saveKeyPair(KeyPair keyPair, String publicKeyPath, String privateKeyPath) throws IOException {
-        // 保存公钥
+        // Save Public Key
         PublicKey publicKey = keyPair.getPublic();
         byte[] publicKeyBytes = publicKey.getEncoded();
         writeFile(publicKeyPath, Base64.getEncoder().encodeToString(publicKeyBytes));
 
-        // 保存私钥
+        // Save Private Key
         PrivateKey privateKey = keyPair.getPrivate();
         byte[] privateKeyBytes = privateKey.getEncoded();
         writeFile(privateKeyPath, Base64.getEncoder().encodeToString(privateKeyBytes));
@@ -45,14 +45,14 @@ public class SecurityUtils {
     }
 
     public static KeyPair loadKeyPair(String publicKeyPath, String privateKeyPath) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
-        // 读取公钥
+        // Load Public Key
         String publicKeyData = new String(Files.readAllBytes(Paths.get(publicKeyPath)));
         byte[] publicKeyBytes = Base64.getDecoder().decode(publicKeyData);
         X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(publicKeyBytes);
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
         PublicKey publicKey = keyFactory.generatePublic(publicKeySpec);
 
-        // 读取私钥
+        // Load Private Key
         String privateKeyData = new String(Files.readAllBytes(Paths.get(privateKeyPath)));
         byte[] privateKeyBytes = Base64.getDecoder().decode(privateKeyData);
         PKCS8EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(privateKeyBytes);
@@ -62,14 +62,10 @@ public class SecurityUtils {
     }
 
     public static KeyPair getKeyPair(String publicKeyPath, String privateKeyPath) throws IOException, GeneralSecurityException {
-        // 检查密钥文件是否存在
         if (new File(publicKeyPath).exists() && new File(privateKeyPath).exists()) {
-            // 如果存在，读取密钥对
             return loadKeyPair(publicKeyPath, privateKeyPath);
         } else {
-            // 如果不存在，生成新的密钥对
             KeyPair keyPair = generateKeyPair();
-            // 并保存它们
             saveKeyPair(keyPair, publicKeyPath, privateKeyPath);
             return keyPair;
         }
