@@ -5,7 +5,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import java.io.IOException;
 
-@SpringBootApplication
 public class PreparationDemo {
     public static final String inputCsvPath = "/Users/zhanghaoran/Desktop/FYP/data/data5/1/trf1_10mil_shuffled.csv";
     public static final String outputCsvPath = "/Users/zhanghaoran/Desktop/FYP/data/data5/1/serverDB";
