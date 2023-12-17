@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 import com.example.demo.model.BlockProcessingVO;
+import com.example.demo.service.ChallengingService;
 import com.example.demo.service.LabelingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +18,8 @@ public class DataController {
 
     @Autowired
     LabelingService labelingService;
+    @Autowired
+    ChallengingService challengingService;
     @PostMapping("/labelingPar")
     public List<String> csvLabelingPar(@RequestBody byte[] binaryData) throws IOException, ExecutionException, InterruptedException {
         System.out.println("[Client] Start :: Split the File");
@@ -37,12 +40,12 @@ public class DataController {
     }
 
     @PostMapping("/challenging")
-    public List<String> dataChallenging(@RequestBody byte[] binaryData) throws IOException, GeneralSecurityException, ExecutionException, InterruptedException {
+    public boolean dataChallenging(@RequestBody String tag) throws IOException, GeneralSecurityException, ExecutionException, InterruptedException {
         System.out.println("[Client] Start :: Split the File");
         long start = System.currentTimeMillis();
-        CompletableFuture<BlockProcessingVO> res = labelingService.sendDataSeq(binaryData);
+        CompletableFuture<Boolean> res = challengingService.requestBlock(tag);
         System.out.println("[Client] End ::  Split the File");
         System.out.println("TimeCost Seq:: " + (System.currentTimeMillis() - start));
-        return res.get().getSignatures();
+        return res.get();
     }
 }
