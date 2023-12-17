@@ -70,83 +70,83 @@ public class DataBlockUtil {
         }
     }
 
-    public static List<String> splitCsvToMetadataSequential(byte[] inputCsvBytes, int rowsPerBlock, String outputCsvPath) throws IOException {
+    public static BlockProcessingVO splitCsvToMetadataSequential(byte[] inputCsvBytes, int rowsPerBlock) throws IOException, GeneralSecurityException {
         List<String> metadataList = new ArrayList<>();
+        List<String> csvList = new ArrayList<>();
 
-        Path outputPath = Paths.get(outputCsvPath);
-        Files.createDirectories(outputPath.getParent());
-
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(inputCsvBytes), StandardCharsets.UTF_8));
-             BufferedWriter outputWriter = Files.newBufferedWriter(outputPath, StandardCharsets.UTF_8)) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(inputCsvBytes), StandardCharsets.UTF_8))) {
             String line = reader.readLine(); // read and save the header of the csv
             if (line != null) {
-                outputWriter.write(line);
-                outputWriter.newLine();
+                csvList.add(line);
             }
-            while (line != null) {
+            while ((line = reader.readLine()) != null) {
                 List<String> blockLines = new ArrayList<>();
-                for (int rowCount = 0; rowCount < rowsPerBlock && line != null; rowCount++) {
-                    line = reader.readLine();
-                    if (line != null) {
-                        blockLines.add(line);
-                    }
+                blockLines.add(line);
+
+                for (int rowCount = 1; rowCount < rowsPerBlock && (line = reader.readLine()) != null; rowCount++) {
+                    blockLines.add(line);
                 }
 
                 String blockAsString = String.join("\n", blockLines);
                 String blockMd5 = MD5Util.calculateMD5(blockAsString);
-                PrivateKey privateKey = SecurityUtils.getKeyPair(SecurityUtils.CLIENT_PUBLIC_KEY_FILE,
-                        SecurityUtils.CLIENT_PRIVATE_KEY_FILE).getPrivate();
+                PrivateKey privateKey = SecurityUtils.getKeyPair(SecurityUtils.CLIENT_PUBLIC_KEY_FILE, SecurityUtils.CLIENT_PRIVATE_KEY_FILE).getPrivate();
                 byte[] signature = SecurityUtils.sign(privateKey, blockMd5.getBytes());
 
                 Random rand = new Random();
-                int n = rand.nextInt(blockLines.size()) + 1;
+                int n = rand.nextInt(blockLines.size());
 
                 String signatureString = "Signature:" + Arrays.toString(signature);
                 blockLines.add(n, signatureString);
                 metadataList.add(signatureString);
 
-                for (String blockLine : blockLines) {
-                    outputWriter.write(blockLine);
+                csvList.addAll(blockLines);
+            }
+        }
+
+        byte[] csvBytes = String.join("\n", csvList).getBytes(StandardCharsets.UTF_8);
+        BlockProcessingVO blockProcessingVO = new BlockProcessingVO(metadataList, csvList, csvBytes);
+
+        return blockProcessingVO;
+    }
+
+    public static BlockProcessingVO splitCsvToMetadataPar(byte[] inputCsvBytes, int rowsPerBlock, String outputCsvPath) throws IOException {
+            List<String> lines = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(inputCsvBytes), StandardCharsets.UTF_8))
+                    .lines().collect(Collectors.toList());
+
+            Path outputPath = Paths.get(outputCsvPath);
+            Files.createDirectories(outputPath.getParent());
+
+            String header = lines.isEmpty() ? null : lines.remove(0); // 提取并移除文件头
+
+            ForkJoinPool forkJoinPool = new ForkJoinPool();
+            RecursiveTask<BlockProcessingVO> task = new CsvTask(lines, 0, lines.size(), rowsPerBlock);
+            BlockProcessingVO result = forkJoinPool.invoke(task);
+
+            try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                 BufferedWriter outputWriter = new BufferedWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8))) {
+                if (header != null) {
+                    outputWriter.write(header);
                     outputWriter.newLine();
                 }
-            }
-        } catch (GeneralSecurityException e) {
-            throw new RuntimeException(e);
-        }
-        System.out.println("Metadata generation and data block writing are done to " + outputPath);
 
-        return metadataList;
-    }
+                for (String line : result.getCsv()) {
+                    outputWriter.write(line);
+                    outputWriter.newLine();
+                }
+                outputWriter.flush();
 
-    public static List<String> splitCsvToMetadataPar(byte[] inputCsvBytes, int rowsPerBlock, String outputCsvPath) throws IOException {
-        // 将 byte[] 转换为字符串列表
-        List<String> lines = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(inputCsvBytes), StandardCharsets.UTF_8))
-                .lines().collect(Collectors.toList());
-
-        Path outputPath = Paths.get(outputCsvPath);
-        Files.createDirectories(outputPath.getParent());
-
-        String header = lines.isEmpty() ? null : lines.remove(0); // 提取并移除文件头
-
-        ForkJoinPool forkJoinPool = new ForkJoinPool();
-        RecursiveTask<BlockProcessingVO> task = new CsvTask(lines, 0, lines.size(), rowsPerBlock);
-        BlockProcessingVO result = forkJoinPool.invoke(task);
-        List<String> processedLines = result.getCsv();
-
-        try (BufferedWriter outputWriter = Files.newBufferedWriter(outputPath, StandardCharsets.UTF_8)) {
-            if (header != null) {
-                outputWriter.write(header);
-                outputWriter.newLine(); // 写入文件头
+                byte[] processedData = baos.toByteArray();
+                Files.write(outputPath, processedData); // 将数据写入文件
+                result.setCsvBin(processedData); // 假设 BlockProcessingVO 有 setCsvData 方法
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            } finally {
+                forkJoinPool.shutdown(); // 关闭线程池
             }
 
-            for (String line : processedLines) {
-                outputWriter.write(line);
-                outputWriter.newLine();
-            }
+            return result;
         }
 
-        return result.getSignatures();
-    }
 
     public static String findAndRemoveBlockWithSignatureParallel(String csvPath, int rowsPerBlock, String signatureToFind) throws IOException {
         long startTime = System.currentTimeMillis();

@@ -12,4 +12,5 @@ import java.util.List;
 public class BlockProcessingVO {
     List<String> signatures;
     List<String> csv;
+    byte[] csvBin;
 }

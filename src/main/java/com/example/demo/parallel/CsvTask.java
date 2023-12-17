@@ -52,7 +52,8 @@ public class CsvTask extends RecursiveTask<BlockProcessingVO> {
                 mergedCsv.addAll(result.getCsv());
                 mergedSignatures.addAll(result.getSignatures());
             }
-            return new BlockProcessingVO(mergedSignatures, mergedCsv);
+
+            return new BlockProcessingVO(mergedSignatures, mergedCsv, null);
         }
     }
 

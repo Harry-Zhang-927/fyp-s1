@@ -1,9 +1,11 @@
 package com.example.demo.controller;
 import com.example.demo.client.utils.DataBlockUtil;
+import com.example.demo.model.BlockProcessingVO;
 import com.example.demo.service.LabelingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.util.List;
 
 @RestController
@@ -15,22 +17,21 @@ public class DataController {
     @Autowired
     LabelingService labelingService;
     @PostMapping("/labelingPar")
-    public List<String> csvLabelingPar(@RequestBody byte[] binaryData) throws IOException {
+    public BlockProcessingVO csvLabelingPar(@RequestBody byte[] binaryData) throws IOException {
         System.out.println("[Client] Start :: Split the File");
         long start = System.currentTimeMillis();
-        List<String> res = DataBlockUtil.splitCsvToMetadataPar(binaryData, 1000, outputCsvPath);
+        BlockProcessingVO res = DataBlockUtil.splitCsvToMetadataPar(binaryData, 1000, outputCsvPath);
         System.out.println("[Client] End ::  Split the File");
         System.out.println("TimeCost Par :: " + (System.currentTimeMillis() - start));
         return res;
     }
     @PostMapping("/labelingSeq")
-    public List<String> csvLabelingSeq(@RequestBody byte[] binaryData) throws IOException {
+    public BlockProcessingVO csvLabelingSeq(@RequestBody byte[] binaryData) throws IOException, GeneralSecurityException {
         System.out.println("[Client] Start :: Split the File");
         long start = System.currentTimeMillis();
-        List<String> res = DataBlockUtil.splitCsvToMetadataSequential(binaryData, 1000, outputCsvPath);
+        BlockProcessingVO res = DataBlockUtil.splitCsvToMetadataSequential(binaryData, 1000);
         System.out.println("[Client] End ::  Split the File");
         System.out.println("TimeCost Seq:: " + (System.currentTimeMillis() - start));
-
         return res;
     }
 }
