@@ -35,4 +35,14 @@ public class DataController {
         System.out.println("TimeCost Seq:: " + (System.currentTimeMillis() - start));
         return res.get().getSignatures();
     }
+
+    @PostMapping("/challenging")
+    public List<String> dataChallenging(@RequestBody byte[] binaryData) throws IOException, GeneralSecurityException, ExecutionException, InterruptedException {
+        System.out.println("[Client] Start :: Split the File");
+        long start = System.currentTimeMillis();
+        CompletableFuture<BlockProcessingVO> res = labelingService.sendDataSeq(binaryData);
+        System.out.println("[Client] End ::  Split the File");
+        System.out.println("TimeCost Seq:: " + (System.currentTimeMillis() - start));
+        return res.get().getSignatures();
+    }
 }
