@@ -53,11 +53,6 @@ public class DataBlockUtil {
                         long endTime = System.currentTimeMillis(); // 结束时间
                         System.out.println("Time taken: " + (endTime - startTime) + " ms"); // 打印所花时间
                         return MD5Util.calculateMD5(remainingBlock);
-
-                        // 如果需要，可以在此处处理剩余的数据块，例如将其写回到文件中
-                        // ...
-
-                        // 如果只需要找到第一个匹配的数据块，则在此处终止循环
                     } else {
                         // 没有发现MD5，重置当前数据块以读取下一个数据块
                         currentBlock.clear();
@@ -104,17 +99,13 @@ public class DataBlockUtil {
         }
 
         byte[] csvBytes = String.join("\n", csvList).getBytes(StandardCharsets.UTF_8);
-        BlockProcessingVO blockProcessingVO = new BlockProcessingVO(metadataList, csvList, csvBytes);
 
-        return blockProcessingVO;
+        return BlockProcessingVO.builder().csv(csvList).csvBin(csvBytes).signatures(metadataList).build();
     }
 
-    public static BlockProcessingVO splitCsvToMetadataPar(byte[] inputCsvBytes, int rowsPerBlock, String outputCsvPath) throws IOException {
+    public static BlockProcessingVO splitCsvToMetadataPar(byte[] inputCsvBytes, int rowsPerBlock) {
             List<String> lines = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(inputCsvBytes), StandardCharsets.UTF_8))
                     .lines().collect(Collectors.toList());
-
-            Path outputPath = Paths.get(outputCsvPath);
-            Files.createDirectories(outputPath.getParent());
 
             String header = lines.isEmpty() ? null : lines.remove(0); // 提取并移除文件头
 
@@ -136,7 +127,6 @@ public class DataBlockUtil {
                 outputWriter.flush();
 
                 byte[] processedData = baos.toByteArray();
-                Files.write(outputPath, processedData); // 将数据写入文件
                 result.setCsvBin(processedData); // 假设 BlockProcessingVO 有 setCsvData 方法
             } catch (Exception e) {
                 throw new RuntimeException(e);

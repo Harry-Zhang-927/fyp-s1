@@ -1,5 +1,4 @@
 package com.example.demo.controller;
-import com.example.demo.client.utils.DataBlockUtil;
 import com.example.demo.model.BlockProcessingVO;
 import com.example.demo.service.LabelingService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -7,6 +6,8 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 @RestController
 public class DataController {
@@ -17,21 +18,21 @@ public class DataController {
     @Autowired
     LabelingService labelingService;
     @PostMapping("/labelingPar")
-    public BlockProcessingVO csvLabelingPar(@RequestBody byte[] binaryData) throws IOException {
+    public List<String> csvLabelingPar(@RequestBody byte[] binaryData) throws IOException, ExecutionException, InterruptedException {
         System.out.println("[Client] Start :: Split the File");
         long start = System.currentTimeMillis();
-        BlockProcessingVO res = DataBlockUtil.splitCsvToMetadataPar(binaryData, 1000, outputCsvPath);
+        CompletableFuture<BlockProcessingVO> res = labelingService.sendDataPar(binaryData);
         System.out.println("[Client] End ::  Split the File");
         System.out.println("TimeCost Par :: " + (System.currentTimeMillis() - start));
-        return res;
+        return res.get().getSignatures();
     }
     @PostMapping("/labelingSeq")
-    public BlockProcessingVO csvLabelingSeq(@RequestBody byte[] binaryData) throws IOException, GeneralSecurityException {
+    public List<String> csvLabelingSeq(@RequestBody byte[] binaryData) throws IOException, GeneralSecurityException, ExecutionException, InterruptedException {
         System.out.println("[Client] Start :: Split the File");
         long start = System.currentTimeMillis();
-        BlockProcessingVO res = DataBlockUtil.splitCsvToMetadataSequential(binaryData, 1000);
+        CompletableFuture<BlockProcessingVO> res = labelingService.sendDataSeq(binaryData);
         System.out.println("[Client] End ::  Split the File");
         System.out.println("TimeCost Seq:: " + (System.currentTimeMillis() - start));
-        return res;
+        return res.get().getSignatures();
     }
 }
