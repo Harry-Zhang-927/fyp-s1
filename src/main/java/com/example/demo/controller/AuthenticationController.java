@@ -8,8 +8,8 @@ import java.util.Random;
 
 @RestController
 public class AuthenticationController {
-    @GetMapping("/echo")
-    public String echo(@RequestParam(value = "q") Long q, @RequestParam(value = "a") Long a) {
+    @GetMapping("/connect")
+    public String connect(@RequestParam(value = "p") Long q, @RequestParam(value = "a") Long a) {
         if (q == null || a == null) {
             throw new IllegalArgumentException();
         }

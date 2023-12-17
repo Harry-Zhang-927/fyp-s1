@@ -1,5 +1,6 @@
 package com.example.demo.client.utils;
 
+import com.example.demo.model.BlockProcessingVO;
 import com.example.demo.parallel.CsvTask;
 
 import java.io.*;
@@ -8,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
+import java.security.PrivateKey;
 import java.security.Timestamp;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -68,79 +70,82 @@ public class DataBlockUtil {
         }
     }
 
-    public static void splitCsvToMetadataSequential(String inputCsvPath, int rowsPerBlock, String metadataPath, String outputCsvPath) throws IOException {
-        Path inputPath = Paths.get(inputCsvPath);
-        String inputFileName = inputPath.getFileName().toString();
-        Path outputPath = Paths.get(outputCsvPath).resolve(inputFileName + "_tagged" + ".csv");
+    public static List<String> splitCsvToMetadataSequential(byte[] inputCsvBytes, int rowsPerBlock, String outputCsvPath) throws IOException {
+        List<String> metadataList = new ArrayList<>();
 
-        // Will be replaced with Database
+        Path outputPath = Paths.get(outputCsvPath);
         Files.createDirectories(outputPath.getParent());
 
-        try (BufferedReader reader = Files.newBufferedReader(inputPath, StandardCharsets.UTF_8);
-             BufferedWriter metadataWriter = Files.newBufferedWriter(Paths.get(metadataPath), StandardCharsets.UTF_8);
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(inputCsvBytes), StandardCharsets.UTF_8));
              BufferedWriter outputWriter = Files.newBufferedWriter(outputPath, StandardCharsets.UTF_8)) {
             String line = reader.readLine(); // read and save the header of the csv
-            // Copy the header to the final 'tagged_with_metadata' csv
             if (line != null) {
                 outputWriter.write(line);
                 outputWriter.newLine();
             }
             while (line != null) {
                 List<String> blockLines = new ArrayList<>();
-                // read lines in group of block
                 for (int rowCount = 0; rowCount < rowsPerBlock && line != null; rowCount++) {
-                    line = reader.readLine(); //1000
+                    line = reader.readLine();
                     if (line != null) {
                         blockLines.add(line);
                     }
                 }
-                // Calculate the whole file MD5
+
                 String blockAsString = String.join("\n", blockLines);
                 String blockMd5 = MD5Util.calculateMD5(blockAsString);
-                byte[] signature = SecurityUtils.sign(SecurityUtils.getKeyPair(SecurityUtils.CLIENT_PUBLIC_KEY_FILE,
-                        SecurityUtils.CLIENT_PRIVATE_KEY_FILE).getPrivate(), blockMd5.getBytes());
-                //tag
+                PrivateKey privateKey = SecurityUtils.getKeyPair(SecurityUtils.CLIENT_PUBLIC_KEY_FILE,
+                        SecurityUtils.CLIENT_PRIVATE_KEY_FILE).getPrivate();
+                byte[] signature = SecurityUtils.sign(privateKey, blockMd5.getBytes());
+
                 Random rand = new Random();
-                int n = rand.nextInt(blockLines.size()) + 1; // +1 to prevent the first line, to easy to break
+                int n = rand.nextInt(blockLines.size()) + 1;
 
-                // insert the MD5 at line n
-                blockLines.add(n, "Signature:" + Arrays.toString(signature));
-                // will be replaced with Database
-                metadataWriter.write("Signature: " + Arrays.toString(signature));
-                metadataWriter.newLine();
+                String signatureString = "Signature:" + Arrays.toString(signature);
+                blockLines.add(n, signatureString);
+                metadataList.add(signatureString);
 
-                // append the data in the block into the final 'tagged_with_metadata' csv
                 for (String blockLine : blockLines) {
                     outputWriter.write(blockLine);
                     outputWriter.newLine();
                 }
-
             }
         } catch (GeneralSecurityException e) {
             throw new RuntimeException(e);
         }
         System.out.println("Metadata generation and data block writing are done to " + outputPath);
+
+        return metadataList;
     }
 
-    public static void splitCsvToMetadataPar(String inputCsvPath, int rowsPerBlock, String metadataPath, String outputCsvPath) throws IOException {
-        Path inputPath = Paths.get(inputCsvPath);
-        String inputFileName = inputPath.getFileName().toString();
-        Path outputPath = Paths.get(outputCsvPath).resolve(inputFileName + "_tagged" + ".csv");
+    public static List<String> splitCsvToMetadataPar(byte[] inputCsvBytes, int rowsPerBlock, String outputCsvPath) throws IOException {
+        // 将 byte[] 转换为字符串列表
+        List<String> lines = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(inputCsvBytes), StandardCharsets.UTF_8))
+                .lines().collect(Collectors.toList());
 
+        Path outputPath = Paths.get(outputCsvPath);
         Files.createDirectories(outputPath.getParent());
 
-        List<String> lines = Files.readAllLines(inputPath, StandardCharsets.UTF_8);
-        ForkJoinPool forkJoinPool = new ForkJoinPool();
-        RecursiveTask<List<String>> task = new CsvTask(lines, 0, lines.size(), rowsPerBlock);
-        List<String> processedLines = forkJoinPool.invoke(task);
+        String header = lines.isEmpty() ? null : lines.remove(0); // 提取并移除文件头
 
-        try (BufferedWriter metadataWriter = Files.newBufferedWriter(Paths.get(metadataPath), StandardCharsets.UTF_8);
-             BufferedWriter outputWriter = Files.newBufferedWriter(outputPath, StandardCharsets.UTF_8)) {
+        ForkJoinPool forkJoinPool = new ForkJoinPool();
+        RecursiveTask<BlockProcessingVO> task = new CsvTask(lines, 0, lines.size(), rowsPerBlock);
+        BlockProcessingVO result = forkJoinPool.invoke(task);
+        List<String> processedLines = result.getCsv();
+
+        try (BufferedWriter outputWriter = Files.newBufferedWriter(outputPath, StandardCharsets.UTF_8)) {
+            if (header != null) {
+                outputWriter.write(header);
+                outputWriter.newLine(); // 写入文件头
+            }
+
             for (String line : processedLines) {
                 outputWriter.write(line);
                 outputWriter.newLine();
             }
         }
+
+        return result.getSignatures();
     }
 
     public static String findAndRemoveBlockWithSignatureParallel(String csvPath, int rowsPerBlock, String signatureToFind) throws IOException {

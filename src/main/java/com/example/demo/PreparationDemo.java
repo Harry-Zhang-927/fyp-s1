@@ -12,7 +12,7 @@ public class PreparationDemo {
     public static void main(String[] args) throws IOException {
         System.out.println("[Client] Start :: Split the File");
         long start = System.currentTimeMillis();
-        DataBlockUtil.splitCsvToMetadataPar(inputCsvPath, 500000, outputMetaDataPath, outputCsvPath);
+        //DataBlockUtil.splitCsvToMetadataPar(inputCsvPath, 1000, outputMetaDataPath, outputCsvPath);
         System.out.println("[Client] End ::  Split the File");
         System.out.println("TimeCost :: " + (System.currentTimeMillis() - start));
     }

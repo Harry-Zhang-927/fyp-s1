@@ -80,13 +80,11 @@ public class UploadingDemo {
 		FileUtil.byteArrayToFile(decrypted, outputCsvPath);
 		System.out.println("[Server] downloaded the csv file");
 
-		try (FileOutputStream fos = new FileOutputStream(filePath)) {
-			fos.write(decrypted);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-
+//		try (FileOutputStream fos = new FileOutputStream(filePath)) {
+//			fos.write(decrypted);
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
 
 
 		System.out.println("[Third Party] checking if the file is consistent");
