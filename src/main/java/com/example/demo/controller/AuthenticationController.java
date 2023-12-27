@@ -1,19 +1,20 @@
 package com.example.demo.controller;
 import com.example.demo.context.RequestContext;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Random;
-
 @RestController
 public class AuthenticationController {
     @GetMapping("/connect")
-    public String connect(@RequestParam(value = "p") Long q, @RequestParam(value = "a") Long a) {
+    public ResponseEntity<String> connect(@RequestParam(value = "p") Long q, @RequestParam(value = "a") Long a) {
         if (q == null || a == null) {
             throw new IllegalArgumentException();
         }
-        return "ok";
+        return ResponseEntity.ok("{\"message\":\"ok\"}");
     }
 
     @GetMapping("/requestPK")

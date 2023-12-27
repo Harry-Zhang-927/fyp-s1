@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -40,8 +41,9 @@ public class DataController {
     }
 
     @PostMapping("/challenging")
-    public boolean dataChallenging(@RequestBody String tag) throws IOException, GeneralSecurityException, ExecutionException, InterruptedException {
+    public boolean dataChallenging(@RequestBody Map<String, String> payload) throws IOException, GeneralSecurityException, ExecutionException, InterruptedException {
         System.out.println("[Client] Start :: Split the File");
+        String tag = payload.get("Signature");
         long start = System.currentTimeMillis();
         CompletableFuture<Boolean> res = challengingService.requestBlock(tag);
         System.out.println("[Client] End ::  Split the File");

@@ -39,8 +39,8 @@ public class LabelingService {
 
     private CompletableFuture<BlockProcessingVO> getBlockProcessingVOCompletableFuture(String url, BlockProcessingVO res) {
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-        HttpEntity<byte[]> entity = new HttpEntity<>(res.getCsvBin(), headers);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<BlockProcessingVO> entity = new HttpEntity<>(res, headers);
 
         ResponseEntity<Boolean> response = restTemplate.postForEntity(url, entity, Boolean.class);
         res.setStoredSuccessfully(response.getBody());

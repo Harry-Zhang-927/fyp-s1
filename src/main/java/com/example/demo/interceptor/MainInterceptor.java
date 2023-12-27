@@ -18,6 +18,8 @@ public class MainInterceptor implements HandlerInterceptor {
         String p = (String) httpSession.getAttribute("p");
         String a = (String) httpSession.getAttribute("a");
 
+        p = "23";
+        a = "5";
 
         RequestCtx requestCtx = new RequestCtx();
         requestCtx.setA(Integer.valueOf(a));
@@ -25,4 +27,5 @@ public class MainInterceptor implements HandlerInterceptor {
         SystemContextUtils.setRequestCtxThreadLocal(requestCtx);
         return true;
     }
+
 }
